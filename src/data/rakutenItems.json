@@ -1,0 +1,22 @@
+{
+  "rice": {
+    "id": "rice",
+    "name": "秋田県産 あきたこまち 無洗米 15kg",
+    "itemCode": "f434477-mifune:10000001",
+    "fallbackKeyword": "ふるさと納税 無洗米 15kg",
+    "price": 15000,
+    "savings": 13000,
+    "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/f052043-noshiro/cabinet/10129759/10636254/imgrc0119253457.jpg",
+    "dynamicUrl": "https://search.rakuten.co.jp/search/mall/%E3%81%B5%E3%82%8B%E3%81%95%E3%81%A8%E7%B4%8D%E7%A8%8E%20%E7%84%A1%E6%B4%97%E7%B1%B3%2015kg/"
+  },
+  "tp": {
+    "id": "tp",
+    "name": "エリエール トイレットティシュー ダブル 72ロール",
+    "itemCode": "f222101-fuji:10000451",
+    "fallbackKeyword": "ふるさと納税 トイレットペーパー エリエール",
+    "price": 11000,
+    "savings": 4500,
+    "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/f222101-fuji/cabinet/10000451.jpg",
+    "dynamicUrl": "https://search.rakuten.co.jp/search/mall/%E3%81%B5%E3%82%8B%E3%81%95%E3%81%A8%E7%B4%8D%E7%A8%8E%20%E3%83%88%E3%82%A4%E3%83%AC%E3%83%83%E3%83%88%E3%83%9A%E3%83%BC%E3%83%91%E3%83%BC%20%E3%82%A8%E3%83%AA%E3%82%A8%E3%83%BC%E3%83%AB/"
+  }
+}
