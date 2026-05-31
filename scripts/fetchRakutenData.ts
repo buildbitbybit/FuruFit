@@ -25,12 +25,21 @@ async function fetchData() {
         itemCode: item.itemCode
       });
       try {
-        const res = await fetch(`${url}?${params.toString()}`);
+        // ここにヘッダーを追加しています
+        const res = await fetch(`${url}?${params.toString()}`, {
+          headers: {
+            'Origin': 'https://buildbitbybit.github.io',
+            'Referer': 'https://buildbitbybit.github.io/FuruFit/'
+          }
+        });
+        
         if (res.ok) {
           const data = await res.json() as any;
           if (data.Items && data.Items.length > 0) finalUrl = data.Items[0].Item.affiliateUrl;
         }
-      } catch (e) { console.error(`Failed to fetch ${item.id}`, e); }
+      } catch (e) { 
+        console.error(`Failed to fetch ${item.id}`, e); 
+      }
     }
     dataMap[item.id] = { ...item, dynamicUrl: finalUrl };
     await new Promise(r => setTimeout(r, 200)); // Rate limit buffer
@@ -41,4 +50,5 @@ async function fetchData() {
   fs.writeFileSync(path.join(dir, 'rakutenItems.json'), JSON.stringify(dataMap, null, 2));
   console.log("✅ Rakuten Data fetched and saved statically.");
 }
+
 fetchData();
