@@ -1,16 +1,24 @@
-// Jamstackビルド時に生成されたJSONを読み込む（存在しない場合のエラー回避策含む）
-import itemsDataJson from '@/data/rakutenItems.json' assert { type: "json" };
+// ★ fs と path を使って、JSONファイルがなくても落ちない安全な読み込みに変更
+import fs from 'fs';
+import path from 'path';
 
-const itemsData: Record<string, any> = itemsDataJson || {};
+// プロジェクトルートの data/rakutenItems.json を同期的に読み込み、なければ空オブジェクト
+const itemsData: Record<string, any> = (() => {
+  try {
+    const filePath = path.join(process.cwd(), 'data', 'rakutenItems.json');
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    // ファイルが存在しない・パース失敗など → 安全な空オブジェクト
+    return {};
+  }
+})();
 
 export type Result<T> = { success: true; data: T } | { success: false; error: string };
 
-// 💡 修正: 誤動作の原因となるハードコードされたダミーIDを削除し、環境変数のみに依存させる
 const AFFILIATE_ID = process.env.NEXT_PUBLIC_RAKUTEN_AFFILIATE_ID || process.env.RAKUTEN_AFFILIATE_ID;
 
-// アフィリエイトリンク自己生成（エラー完全回避版）
 const generateAffiliateLink = (targetUrl: string, affiliateId: string | undefined): string => {
-  // 💡 修正: IDが未設定、またはダミーの文字列が含まれる場合はアフィリエイト化せず、安全な直リンクを返す
   if (!affiliateId || affiliateId === "12345678.9abcdef0" || affiliateId.includes("あなたのアフィリエイトID")) {
     return targetUrl; 
   }
@@ -38,18 +46,17 @@ const ITEMS: Record<string, any> = {
 };
 
 const getDynamicUrl = (itemId: string) => {
-  // 1. JSONにビルドされたURLがあれば、それを安全にアフィリエイト化するかチェックして返す
-  if (itemsData[itemId] && itemsData[itemId].dynamicUrl) {
+  if (itemsData[itemId]?.dynamicUrl) {
     const builtUrl = itemsData[itemId].dynamicUrl;
-    // すでにhb.afl〜ならそのまま、そうでないならアフィリンク化を試みる
     if (builtUrl.includes('hb.afl.rakuten.co.jp')) return builtUrl;
     return generateAffiliateLink(builtUrl, AFFILIATE_ID);
   }
   
-  // 2. なければ代替検索URLをアフィリエイト化（または直リンク化）
   const rawSearchUrl = `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(ITEMS[itemId].fallbackKeyword)}/`;
   return generateAffiliateLink(rawSearchUrl, AFFILIATE_ID);
 };
+
+// ── 以下は変更なし ──
 
 const estimateBudget = (inc: number) => {
   if (inc >= 8000000) return 120000;
@@ -60,7 +67,6 @@ const estimateBudget = (inc: number) => {
   return 15000; 
 };
 
-// リアルな年間消費上限（自炊・2人世帯等）
 const REALISTIC_MAX_NEEDS: Record<number, Record<string, number>> = {
   1: { rice: 3, tp: 1 },
   2: { rice: 5, tp: 2 },
@@ -68,13 +74,11 @@ const REALISTIC_MAX_NEEDS: Record<number, Record<string, number>> = {
   4: { rice: 9, tp: 3 },
 };
 
-// メイン計算ロジック
 export const generateFuruFitPlan = (income: number, familySize: number, ricePace?: string, tpPace?: string): Result<any> => {
   const totalBudget = estimateBudget(income);
   const safeFamilySize = Math.max(1, Math.min(4, familySize));
   const maxNeeds = REALISTIC_MAX_NEEDS[safeFamilySize];
 
-  // 1. 予算内で限界まで回数を確保
   const purchaseCounts = { rice: 0, tp: 0 };
   let currentBudget = totalBudget;
   let hasAdded = true;
@@ -93,7 +97,6 @@ export const generateFuruFitPlan = (income: number, familySize: number, ricePace
     return { success: false, error: '寄付上限額の目安が低すぎるため、プランを生成できませんでした。' };
   }
 
-  // 2. 確保した回数を「隙間 (false)」として12ヶ月に均等配置
   const inventory = {
     rice: new Array(12).fill(true),
     tp: new Array(12).fill(true)
@@ -105,20 +108,18 @@ export const generateFuruFitPlan = (income: number, familySize: number, ricePace
     for (let i = 0; i < count; i++) {
       let month = Math.round((interval / 2) + (i * interval));
       if (month < 1) month = 1; if (month > 12) month = 12;
-      inventory[type][month - 1] = false; // 0-indexed
+      inventory[type][month - 1] = false;
     }
   };
 
   distributeEmpties('rice', purchaseCounts.rice);
   distributeEmpties('tp', purchaseCounts.tp);
 
-  // 3. UI連携用のマスタデータ整形
   const itemsMap: Record<string, any> = {
     rice: { ...ITEMS.rice, dynamicUrl: getDynamicUrl('rice') },
     tp: { ...ITEMS.tp, dynamicUrl: getDynamicUrl('tp') }
   };
 
-  // 現実的な相場に基づく最大節約額
   const totalSavingsMin = purchaseCounts.rice * ITEMS.rice.savingsMin + purchaseCounts.tp * ITEMS.tp.savingsMin;
   const totalSavingsMax = purchaseCounts.rice * ITEMS.rice.savingsMax + purchaseCounts.tp * ITEMS.tp.savingsMax;
 
@@ -136,7 +137,6 @@ export const generateFuruFitPlan = (income: number, familySize: number, ricePace
   };
 };
 
-// UIが非同期呼び出ししている場合のフォールバック互換レイヤー
 export const generateFuruFitPlanAsync = async (args: { income: number; familySize: number } | number, familySizeArg?: number): Promise<Result<any>> => {
   let income = 5000000;
   let familySize = 2;
