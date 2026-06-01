@@ -30,6 +30,9 @@ jobs:
           RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          # 💡 追加: 測定IDをビルド時に注入し、app/layout.tsx へ渡す
+          NEXT_PUBLIC_GA_ID: ${{ secrets.GA_ID }}
+          NEXT_PUBLIC_CLARITY_ID: ${{ secrets.CLARITY_ID }}
         run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
