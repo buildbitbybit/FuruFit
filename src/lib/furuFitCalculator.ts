@@ -5,11 +5,15 @@ const itemsData: Record<string, any> = itemsDataJson || {};
 
 export type Result<T> = { success: true; data: T } | { success: false; error: string };
 
-const AFFILIATE_ID = process.env.NEXT_PUBLIC_RAKUTEN_AFFILIATE_ID || process.env.RAKUTEN_AFFILIATE_ID || "12345678.9abcdef0";
+// 💡 修正: 誤動作の原因となるハードコードされたダミーIDを削除し、環境変数のみに依存させる
+const AFFILIATE_ID = process.env.NEXT_PUBLIC_RAKUTEN_AFFILIATE_ID || process.env.RAKUTEN_AFFILIATE_ID;
 
-// アフィリエイトリンク自己生成（防衛ライン）
+// アフィリエイトリンク自己生成（エラー完全回避版）
 const generateAffiliateLink = (targetUrl: string, affiliateId: string | undefined): string => {
-  if (!affiliateId) return targetUrl;
+  // 💡 修正: IDが未設定、またはダミーの文字列が含まれる場合はアフィリエイト化せず、安全な直リンクを返す
+  if (!affiliateId || affiliateId === "12345678.9abcdef0" || affiliateId.includes("あなたのアフィリエイトID")) {
+    return targetUrl; 
+  }
   return `https://hb.afl.rakuten.co.jp/hgc/${affiliateId}/?pc=${encodeURIComponent(targetUrl)}`;
 };
 
@@ -19,26 +23,30 @@ const ITEMS: Record<string, any> = {
     id: 'rice', 
     name: '【★ 王道・在庫安定】秋田県産 あきたこまち 無洗米 15kg', 
     price: 15000, 
-    savingsMin: 4500, // 修正済
-    savingsMax: 6000, // 修正済
+    savingsMin: 4500,
+    savingsMax: 6000,
     fallbackKeyword: 'ふるさと納税 無洗米 15kg'
   },
   tp: { 
     id: 'tp', 
     name: '【★ 王道・在庫安定】エリエール ダブル72R', 
     price: 11000, 
-    savingsMin: 2500, // 修正済
-    savingsMax: 3500, // 修正済
+    savingsMin: 2500,
+    savingsMax: 3500,
     fallbackKeyword: 'ふるさと納税 トイレットペーパー エリエール'
   }
 };
 
 const getDynamicUrl = (itemId: string) => {
-  // 1. JSONにビルドされたURLがあれば優先
+  // 1. JSONにビルドされたURLがあれば、それを安全にアフィリエイト化するかチェックして返す
   if (itemsData[itemId] && itemsData[itemId].dynamicUrl) {
-    return itemsData[itemId].dynamicUrl;
+    const builtUrl = itemsData[itemId].dynamicUrl;
+    // すでにhb.afl〜ならそのまま、そうでないならアフィリンク化を試みる
+    if (builtUrl.includes('hb.afl.rakuten.co.jp')) return builtUrl;
+    return generateAffiliateLink(builtUrl, AFFILIATE_ID);
   }
-  // 2. なければ代替検索URLをアフィリエイト化
+  
+  // 2. なければ代替検索URLをアフィリエイト化（または直リンク化）
   const rawSearchUrl = `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(ITEMS[itemId].fallbackKeyword)}/`;
   return generateAffiliateLink(rawSearchUrl, AFFILIATE_ID);
 };
@@ -60,7 +68,7 @@ const REALISTIC_MAX_NEEDS: Record<number, Record<string, number>> = {
   4: { rice: 9, tp: 3 },
 };
 
-// メイン計算ロジック（UIが同期呼び出しする場合）
+// メイン計算ロジック
 export const generateFuruFitPlan = (income: number, familySize: number, ricePace?: string, tpPace?: string): Result<any> => {
   const totalBudget = estimateBudget(income);
   const safeFamilySize = Math.max(1, Math.min(4, familySize));
@@ -118,7 +126,7 @@ export const generateFuruFitPlan = (income: number, familySize: number, ricePace
     success: true,
     data: {
       totalBudget,
-      usedBudget: 0, // 初期はまだ枠を埋めていないので0
+      usedBudget: 0, 
       freeFrame: totalBudget, 
       inventory,
       itemsMap,
