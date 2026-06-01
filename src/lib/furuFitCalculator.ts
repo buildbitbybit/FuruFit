@@ -1,18 +1,7 @@
-// ★ fs と path を使って、JSONファイルがなくても落ちない安全な読み込みに変更
-import fs from 'fs';
-import path from 'path';
+// ✅ 静的JSONインポート（assert不要）
+import itemsDataJson from '@/data/rakutenItems.json';
 
-// プロジェクトルートの data/rakutenItems.json を同期的に読み込み、なければ空オブジェクト
-const itemsData: Record<string, any> = (() => {
-  try {
-    const filePath = path.join(process.cwd(), 'data', 'rakutenItems.json');
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    // ファイルが存在しない・パース失敗など → 安全な空オブジェクト
-    return {};
-  }
-})();
+const itemsData: Record<string, any> = itemsDataJson || {};
 
 export type Result<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -20,25 +9,25 @@ const AFFILIATE_ID = process.env.NEXT_PUBLIC_RAKUTEN_AFFILIATE_ID || process.env
 
 const generateAffiliateLink = (targetUrl: string, affiliateId: string | undefined): string => {
   if (!affiliateId || affiliateId === "12345678.9abcdef0" || affiliateId.includes("あなたのアフィリエイトID")) {
-    return targetUrl; 
+    return targetUrl;
   }
   return `https://hb.afl.rakuten.co.jp/hgc/${affiliateId}/?pc=${encodeURIComponent(targetUrl)}`;
 };
 
-// ファクトチェック済みの現実的相場マスタ
+// 以下、ITEMS、getDynamicUrl、estimateBudget、REALISTIC_MAX_NEEDS、generateFuruFitPlan、generateFuruFitPlanAsync は変更なし
 const ITEMS: Record<string, any> = {
-  rice: { 
-    id: 'rice', 
-    name: '【★ 王道・在庫安定】秋田県産 あきたこまち 無洗米 15kg', 
-    price: 15000, 
+  rice: {
+    id: 'rice',
+    name: '【★ 王道・在庫安定】秋田県産 あきたこまち 無洗米 15kg',
+    price: 15000,
     savingsMin: 4500,
     savingsMax: 6000,
     fallbackKeyword: 'ふるさと納税 無洗米 15kg'
   },
-  tp: { 
-    id: 'tp', 
-    name: '【★ 王道・在庫安定】エリエール ダブル72R', 
-    price: 11000, 
+  tp: {
+    id: 'tp',
+    name: '【★ 王道・在庫安定】エリエール ダブル72R',
+    price: 11000,
     savingsMin: 2500,
     savingsMax: 3500,
     fallbackKeyword: 'ふるさと納税 トイレットペーパー エリエール'
@@ -51,12 +40,9 @@ const getDynamicUrl = (itemId: string) => {
     if (builtUrl.includes('hb.afl.rakuten.co.jp')) return builtUrl;
     return generateAffiliateLink(builtUrl, AFFILIATE_ID);
   }
-  
   const rawSearchUrl = `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(ITEMS[itemId].fallbackKeyword)}/`;
   return generateAffiliateLink(rawSearchUrl, AFFILIATE_ID);
 };
-
-// ── 以下は変更なし ──
 
 const estimateBudget = (inc: number) => {
   if (inc >= 8000000) return 120000;
@@ -64,7 +50,7 @@ const estimateBudget = (inc: number) => {
   if (inc >= 5000000) return 60000;
   if (inc >= 4000000) return 40000;
   if (inc >= 3000000) return 28000;
-  return 15000; 
+  return 15000;
 };
 
 const REALISTIC_MAX_NEEDS: Record<number, Record<string, number>> = {
@@ -127,8 +113,8 @@ export const generateFuruFitPlan = (income: number, familySize: number, ricePace
     success: true,
     data: {
       totalBudget,
-      usedBudget: 0, 
-      freeFrame: totalBudget, 
+      usedBudget: 0,
+      freeFrame: totalBudget,
       inventory,
       itemsMap,
       totalSavingsMin,
